@@ -8,8 +8,8 @@ import (
 	"os"
 	"slices"
 
-	"github.com/stainless-sdks/vat-sense-go/internal/requestconfig"
-	"github.com/stainless-sdks/vat-sense-go/option"
+	"github.com/VAT-Sense/vatsense-go/internal/requestconfig"
+	"github.com/VAT-Sense/vatsense-go/option"
 )
 
 // Client creates a struct with services and top level methods that help with

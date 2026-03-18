@@ -2,7 +2,7 @@ package param
 
 import (
 	"encoding/json"
-	"github.com/stainless-sdks/vat-sense-go/internal/encoding/json/sentinel"
+	"github.com/VAT-Sense/vatsense-go/internal/encoding/json/sentinel"
 	"reflect"
 )
 

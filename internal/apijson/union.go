@@ -2,7 +2,7 @@ package apijson
 
 import (
 	"errors"
-	"github.com/stainless-sdks/vat-sense-go/packages/param"
+	"github.com/VAT-Sense/vatsense-go/packages/param"
 	"reflect"
 
 	"github.com/tidwall/gjson"

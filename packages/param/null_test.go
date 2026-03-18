@@ -2,7 +2,7 @@ package param_test
 
 import (
 	"encoding/json"
-	"github.com/stainless-sdks/vat-sense-go/packages/param"
+	"github.com/VAT-Sense/vatsense-go/packages/param"
 	"testing"
 )
 

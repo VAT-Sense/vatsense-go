@@ -3,8 +3,8 @@ package apijson_test
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/stainless-sdks/vat-sense-go/internal/apijson"
-	"github.com/stainless-sdks/vat-sense-go/packages/param"
+	"github.com/VAT-Sense/vatsense-go/internal/apijson"
+	"github.com/VAT-Sense/vatsense-go/packages/param"
 	"reflect"
 	"testing"
 )

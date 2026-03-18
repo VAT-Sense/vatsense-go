@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"net/http/httputil"
 
-	"github.com/stainless-sdks/vat-sense-go/internal/apijson"
-	"github.com/stainless-sdks/vat-sense-go/packages/respjson"
+	"github.com/VAT-Sense/vatsense-go/internal/apijson"
+	"github.com/VAT-Sense/vatsense-go/packages/respjson"
 )
 
 // Error represents an error that originates from the API, i.e. when a request is

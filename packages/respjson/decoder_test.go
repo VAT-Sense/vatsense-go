@@ -3,8 +3,8 @@ package respjson_test
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/stainless-sdks/vat-sense-go/internal/apijson"
-	rj "github.com/stainless-sdks/vat-sense-go/packages/respjson"
+	"github.com/VAT-Sense/vatsense-go/internal/apijson"
+	rj "github.com/VAT-Sense/vatsense-go/packages/respjson"
 	"reflect"
 	"testing"
 )
