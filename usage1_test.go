@@ -28,7 +28,8 @@ func TestUsage(t *testing.T) {
 	)
 	rates, err := client.Rates.List(context.TODO(), vatsense.RateListParams{})
 	if err != nil {
-		t.Fatalf("err should be nil: %s", err.Error())
+		t.Error(err)
+		return
 	}
 	t.Logf("%+v\n", rates.Code)
 }

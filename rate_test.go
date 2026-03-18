@@ -29,10 +29,10 @@ func TestRateListWithOptionalParams(t *testing.T) {
 		option.WithPassword("My Password"),
 	)
 	_, err := client.Rates.List(context.TODO(), vatsense.RateListParams{
-		CountryCode: vatsense.String("GB"),
-		Eu:          vatsense.Bool(true),
-		IPAddress:   vatsense.String("86.27.166.97"),
-		Period:      vatsense.Time(time.Now()),
+		CountryCode: vatsense.F("GB"),
+		Eu:          vatsense.F(true),
+		IPAddress:   vatsense.F("86.27.166.97"),
+		Period:      vatsense.F(time.Now()),
 	})
 	if err != nil {
 		var apierr *vatsense.Error
@@ -58,13 +58,13 @@ func TestRateCalculatePriceWithOptionalParams(t *testing.T) {
 		option.WithPassword("My Password"),
 	)
 	_, err := client.Rates.CalculatePrice(context.TODO(), vatsense.RateCalculatePriceParams{
-		Price:        "20.00",
-		TaxType:      vatsense.RateCalculatePriceParamsTaxTypeExcl,
-		CountryCode:  vatsense.String("GB"),
-		Eu:           vatsense.Bool(true),
-		IPAddress:    vatsense.String("86.27.166.97"),
-		ProvinceCode: vatsense.String("ON"),
-		Type:         vatsense.String("ebooks"),
+		Price:        vatsense.F("20.00"),
+		TaxType:      vatsense.F(vatsense.RateCalculatePriceParamsTaxTypeExcl),
+		CountryCode:  vatsense.F("GB"),
+		Eu:           vatsense.F(true),
+		IPAddress:    vatsense.F("86.27.166.97"),
+		ProvinceCode: vatsense.F("ON"),
+		Type:         vatsense.F("ebooks"),
 	})
 	if err != nil {
 		var apierr *vatsense.Error
@@ -90,12 +90,12 @@ func TestRateDetailsWithOptionalParams(t *testing.T) {
 		option.WithPassword("My Password"),
 	)
 	_, err := client.Rates.Details(context.TODO(), vatsense.RateDetailsParams{
-		CountryCode:  vatsense.String("GB"),
-		Eu:           vatsense.Bool(true),
-		IPAddress:    vatsense.String("86.27.166.97"),
-		Period:       vatsense.Time(time.Now()),
-		ProvinceCode: vatsense.String("ON"),
-		Type:         vatsense.String("ebooks"),
+		CountryCode:  vatsense.F("GB"),
+		Eu:           vatsense.F(true),
+		IPAddress:    vatsense.F("86.27.166.97"),
+		Period:       vatsense.F(time.Now()),
+		ProvinceCode: vatsense.F("ON"),
+		Type:         vatsense.F("ebooks"),
 	})
 	if err != nil {
 		var apierr *vatsense.Error
@@ -121,12 +121,12 @@ func TestRateFindWithOptionalParams(t *testing.T) {
 		option.WithPassword("My Password"),
 	)
 	_, err := client.Rates.Find(context.TODO(), vatsense.RateFindParams{
-		CountryCode:  vatsense.String("GB"),
-		Eu:           vatsense.Bool(true),
-		IPAddress:    vatsense.String("86.27.166.97"),
-		Period:       vatsense.Time(time.Now()),
-		ProvinceCode: vatsense.String("ON"),
-		Type:         vatsense.String("ebooks"),
+		CountryCode:  vatsense.F("GB"),
+		Eu:           vatsense.F(true),
+		IPAddress:    vatsense.F("86.27.166.97"),
+		Period:       vatsense.F(time.Now()),
+		ProvinceCode: vatsense.F("ON"),
+		Type:         vatsense.F("ebooks"),
 	})
 	if err != nil {
 		var apierr *vatsense.Error

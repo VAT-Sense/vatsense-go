@@ -28,8 +28,8 @@ func TestCurrencyListWithOptionalParams(t *testing.T) {
 		option.WithPassword("My Password"),
 	)
 	_, err := client.Currency.List(context.TODO(), vatsense.CurrencyListParams{
-		From: vatsense.String("USD,CAD,AUD"),
-		To:   vatsense.CurrencyListParamsToGbp,
+		From: vatsense.F("USD,CAD,AUD"),
+		To:   vatsense.F(vatsense.CurrencyListParamsToGbp),
 	})
 	if err != nil {
 		var apierr *vatsense.Error
@@ -55,9 +55,9 @@ func TestCurrencyCalculateVatPrice(t *testing.T) {
 		option.WithPassword("My Password"),
 	)
 	_, err := client.Currency.CalculateVatPrice(context.TODO(), vatsense.CurrencyCalculateVatPriceParams{
-		Price:   "20.00",
-		TaxType: vatsense.CurrencyCalculateVatPriceParamsTaxTypeExcl,
-		VatRate: 5,
+		Price:   vatsense.F("20.00"),
+		TaxType: vatsense.F(vatsense.CurrencyCalculateVatPriceParamsTaxTypeExcl),
+		VatRate: vatsense.F(5.000000),
 	})
 	if err != nil {
 		var apierr *vatsense.Error
@@ -83,9 +83,9 @@ func TestCurrencyConvert(t *testing.T) {
 		option.WithPassword("My Password"),
 	)
 	_, err := client.Currency.Convert(context.TODO(), vatsense.CurrencyConvertParams{
-		Amount: "39.99",
-		From:   "USD",
-		To:     vatsense.CurrencyConvertParamsToGbp,
+		Amount: vatsense.F("39.99"),
+		From:   vatsense.F("USD"),
+		To:     vatsense.F(vatsense.CurrencyConvertParamsToGbp),
 	})
 	if err != nil {
 		var apierr *vatsense.Error

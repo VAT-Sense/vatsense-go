@@ -29,10 +29,8 @@ func TestInvoiceItemGet(t *testing.T) {
 	)
 	_, err := client.Invoice.Item.Get(
 		context.TODO(),
+		"in5aeae457cda2a",
 		"ii5aeae457ce201",
-		vatsense.InvoiceItemGetParams{
-			InvoiceID: "in5aeae457cda2a",
-		},
 	)
 	if err != nil {
 		var apierr *vatsense.Error
@@ -59,15 +57,15 @@ func TestInvoiceItemUpdateWithOptionalParams(t *testing.T) {
 	)
 	_, err := client.Invoice.Item.Update(
 		context.TODO(),
+		"in5aeae457cda2a",
 		"ii5aeae457ce201",
 		vatsense.InvoiceItemUpdateParams{
-			InvoiceID: "in5aeae457cda2a",
 			InvoiceItemInput: vatsense.InvoiceItemInputParam{
-				Item:         "Standard payment plan",
-				PriceEach:    19.99,
-				Quantity:     1,
-				VatRate:      20,
-				DiscountRate: vatsense.Float(40),
+				Item:         vatsense.F("Standard payment plan"),
+				PriceEach:    vatsense.F(19.990000),
+				Quantity:     vatsense.F(1.000000),
+				VatRate:      vatsense.F(20.000000),
+				DiscountRate: vatsense.F(40.000000),
 			},
 		},
 	)
@@ -96,10 +94,8 @@ func TestInvoiceItemDelete(t *testing.T) {
 	)
 	_, err := client.Invoice.Item.Delete(
 		context.TODO(),
+		"in5aeae457cda2a",
 		"ii5aeae457ce201",
-		vatsense.InvoiceItemDeleteParams{
-			InvoiceID: "in5aeae457cda2a",
-		},
 	)
 	if err != nil {
 		var apierr *vatsense.Error
@@ -128,13 +124,13 @@ func TestInvoiceItemAdd(t *testing.T) {
 		context.TODO(),
 		"in5aeae457cda2a",
 		vatsense.InvoiceItemAddParams{
-			Items: []vatsense.InvoiceItemInputParam{{
-				Item:         "Standard payment plan",
-				PriceEach:    19.99,
-				Quantity:     1,
-				VatRate:      20,
-				DiscountRate: vatsense.Float(40),
-			}},
+			Items: vatsense.F([]vatsense.InvoiceItemInputParam{{
+				Item:         vatsense.F("Standard payment plan"),
+				PriceEach:    vatsense.F(19.990000),
+				Quantity:     vatsense.F(1.000000),
+				VatRate:      vatsense.F(20.000000),
+				DiscountRate: vatsense.F(40.000000),
+			}}),
 		},
 	)
 	if err != nil {

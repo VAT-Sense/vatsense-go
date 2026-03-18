@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/tidwall/sjson"
+
+	"github.com/VAT-Sense/vatsense-go/internal/param"
 )
 
 var encoders sync.Map // map[encoderEntry]encoderFunc
@@ -20,12 +22,12 @@ var encoders sync.Map // map[encoderEntry]encoderFunc
 // special characters that sjson interprets as a path.
 var EscapeSJSONKey = strings.NewReplacer("\\", "\\\\", "|", "\\|", "#", "\\#", "@", "\\@", "*", "\\*", ".", "\\.", ":", "\\:", "?", "\\?").Replace
 
-func Marshal(value any) ([]byte, error) {
+func Marshal(value interface{}) ([]byte, error) {
 	e := &encoder{dateFormat: time.RFC3339}
 	return e.marshal(value)
 }
 
-func MarshalRoot(value any) ([]byte, error) {
+func MarshalRoot(value interface{}) ([]byte, error) {
 	e := &encoder{root: true, dateFormat: time.RFC3339}
 	return e.marshal(value)
 }
@@ -49,7 +51,7 @@ type encoderEntry struct {
 	root       bool
 }
 
-func (e *encoder) marshal(value any) ([]byte, error) {
+func (e *encoder) marshal(value interface{}) ([]byte, error) {
 	val := reflect.ValueOf(value)
 	if !val.IsValid() {
 		return nil, nil
@@ -204,6 +206,10 @@ func (e *encoder) newArrayTypeEncoder(t reflect.Type) encoderFunc {
 }
 
 func (e *encoder) newStructTypeEncoder(t reflect.Type) encoderFunc {
+	if t.Implements(reflect.TypeOf((*param.FieldLike)(nil)).Elem()) {
+		return e.newFieldTypeEncoder(t)
+	}
+
 	encoderFields := []encoderField{}
 	extraEncoder := (*encoderField)(nil)
 
@@ -290,6 +296,27 @@ func (e *encoder) newStructTypeEncoder(t reflect.Type) encoderFunc {
 	}
 }
 
+func (e *encoder) newFieldTypeEncoder(t reflect.Type) encoderFunc {
+	f, _ := t.FieldByName("Value")
+	enc := e.typeEncoder(f.Type)
+
+	return func(value reflect.Value) (json []byte, err error) {
+		present := value.FieldByName("Present")
+		if !present.Bool() {
+			return nil, nil
+		}
+		null := value.FieldByName("Null")
+		if null.Bool() {
+			return []byte("null"), nil
+		}
+		raw := value.FieldByName("Raw")
+		if !raw.IsNil() {
+			return e.typeEncoder(raw.Type())(raw)
+		}
+		return enc(value.FieldByName("Value"))
+	}
+}
+
 func (e *encoder) newTimeTypeEncoder() encoderFunc {
 	format := e.dateFormat
 	return func(value reflect.Value) (json []byte, err error) {
@@ -358,7 +385,7 @@ func (e *encoder) encodeMapEntries(json []byte, v reflect.Value) ([]byte, error)
 	return json, nil
 }
 
-func (e *encoder) newMapEncoder(_ reflect.Type) encoderFunc {
+func (e *encoder) newMapEncoder(t reflect.Type) encoderFunc {
 	return func(value reflect.Value) ([]byte, error) {
 		json := []byte("{}")
 		var err error

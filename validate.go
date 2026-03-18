@@ -4,17 +4,17 @@ package vatsense
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"net/url"
+	"reflect"
 	"slices"
 
 	"github.com/VAT-Sense/vatsense-go/internal/apijson"
 	"github.com/VAT-Sense/vatsense-go/internal/apiquery"
+	"github.com/VAT-Sense/vatsense-go/internal/param"
 	"github.com/VAT-Sense/vatsense-go/internal/requestconfig"
 	"github.com/VAT-Sense/vatsense-go/option"
-	"github.com/VAT-Sense/vatsense-go/packages/param"
-	"github.com/VAT-Sense/vatsense-go/packages/respjson"
+	"github.com/tidwall/gjson"
 )
 
 // VAT and EORI number validation
@@ -26,15 +26,15 @@ import (
 // automatically. You should not instantiate this service directly, and instead use
 // the [NewValidateService] method instead.
 type ValidateService struct {
-	options []option.RequestOption
+	Options []option.RequestOption
 }
 
 // NewValidateService generates a new service that applies the given options to
 // each request. These options are applied after the parent client's options (if
 // there is one), and before any request-specific options.
-func NewValidateService(opts ...option.RequestOption) (r ValidateService) {
-	r = ValidateService{}
-	r.options = opts
+func NewValidateService(opts ...option.RequestOption) (r *ValidateService) {
+	r = &ValidateService{}
+	r.Options = opts
 	return
 }
 
@@ -51,7 +51,7 @@ func NewValidateService(opts ...option.RequestOption) (r ValidateService) {
 //
 // Provide either `vat_number` or `eori_number`, but not both.
 func (r *ValidateService) Check(ctx context.Context, query ValidateCheckParams, opts ...option.RequestOption) (res *ValidateCheckResponse, err error) {
-	opts = slices.Concat(r.options, opts)
+	opts = slices.Concat(r.Options, opts)
 	path := "validate"
 	err = requestconfig.ExecuteNewRequest(ctx, http.MethodGet, path, query, &res, opts...)
 	return res, err
@@ -61,84 +61,121 @@ type ValidateCheckResponse struct {
 	Code    int64                     `json:"code"`
 	Data    ValidateCheckResponseData `json:"data"`
 	Success bool                      `json:"success"`
-	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
-	JSON struct {
-		Code        respjson.Field
-		Data        respjson.Field
-		Success     respjson.Field
-		ExtraFields map[string]respjson.Field
-		raw         string
-	} `json:"-"`
+	JSON    validateCheckResponseJSON `json:"-"`
 }
 
-// Returns the unmodified JSON received from the API
-func (r ValidateCheckResponse) RawJSON() string { return r.JSON.raw }
-func (r *ValidateCheckResponse) UnmarshalJSON(data []byte) error {
+// validateCheckResponseJSON contains the JSON metadata for the struct
+// [ValidateCheckResponse]
+type validateCheckResponseJSON struct {
+	Code        apijson.Field
+	Data        apijson.Field
+	Success     apijson.Field
+	raw         string
+	ExtraFields map[string]apijson.Field
+}
+
+func (r *ValidateCheckResponse) UnmarshalJSON(data []byte) (err error) {
 	return apijson.UnmarshalRoot(data, r)
 }
 
+func (r validateCheckResponseJSON) RawJSON() string {
+	return r.raw
+}
+
 type ValidateCheckResponseData struct {
-	Company ValidateCheckResponseDataCompanyUnion `json:"company"`
+	Company ValidateCheckResponseDataCompany `json:"company"`
 	// Official consultation number (only returned when requester_vat_number is
 	// provided).
 	ConsultationNumber string `json:"consultation_number" api:"nullable"`
 	// Whether the VAT/EORI number is valid.
-	Valid bool `json:"valid"`
-	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
-	JSON struct {
-		Company            respjson.Field
-		ConsultationNumber respjson.Field
-		Valid              respjson.Field
-		ExtraFields        map[string]respjson.Field
-		raw                string
-	} `json:"-"`
+	Valid bool                          `json:"valid"`
+	JSON  validateCheckResponseDataJSON `json:"-"`
 }
 
-// Returns the unmodified JSON received from the API
-func (r ValidateCheckResponseData) RawJSON() string { return r.JSON.raw }
-func (r *ValidateCheckResponseData) UnmarshalJSON(data []byte) error {
+// validateCheckResponseDataJSON contains the JSON metadata for the struct
+// [ValidateCheckResponseData]
+type validateCheckResponseDataJSON struct {
+	Company            apijson.Field
+	ConsultationNumber apijson.Field
+	Valid              apijson.Field
+	raw                string
+	ExtraFields        map[string]apijson.Field
+}
+
+func (r *ValidateCheckResponseData) UnmarshalJSON(data []byte) (err error) {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-// ValidateCheckResponseDataCompanyUnion contains all possible properties and
-// values from [ValidateCheckResponseDataCompanyValidationCompany],
-// [ValidateCheckResponseDataCompanyEoriValidationCompany].
-//
-// Use the methods beginning with 'As' to cast the union to one of its variants.
-type ValidateCheckResponseDataCompanyUnion struct {
+func (r validateCheckResponseDataJSON) RawJSON() string {
+	return r.raw
+}
+
+type ValidateCheckResponseDataCompany struct {
 	CompanyAddress string `json:"company_address"`
 	CompanyName    string `json:"company_name"`
 	CountryCode    string `json:"country_code"`
-	// This field is from variant [ValidateCheckResponseDataCompanyValidationCompany].
-	VatNumber string `json:"vat_number"`
-	// This field is from variant
-	// [ValidateCheckResponseDataCompanyEoriValidationCompany].
+	// The EORI number (without country code prefix).
 	EoriNumber string `json:"eori_number"`
-	JSON       struct {
-		CompanyAddress respjson.Field
-		CompanyName    respjson.Field
-		CountryCode    respjson.Field
-		VatNumber      respjson.Field
-		EoriNumber     respjson.Field
-		raw            string
-	} `json:"-"`
+	// The VAT number (without country code prefix).
+	VatNumber string                               `json:"vat_number"`
+	JSON      validateCheckResponseDataCompanyJSON `json:"-"`
+	union     ValidateCheckResponseDataCompanyUnion
 }
 
-func (u ValidateCheckResponseDataCompanyUnion) AsValidateCheckResponseDataCompanyValidationCompany() (v ValidateCheckResponseDataCompanyValidationCompany) {
-	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
-	return
+// validateCheckResponseDataCompanyJSON contains the JSON metadata for the struct
+// [ValidateCheckResponseDataCompany]
+type validateCheckResponseDataCompanyJSON struct {
+	CompanyAddress apijson.Field
+	CompanyName    apijson.Field
+	CountryCode    apijson.Field
+	EoriNumber     apijson.Field
+	VatNumber      apijson.Field
+	raw            string
+	ExtraFields    map[string]apijson.Field
 }
 
-func (u ValidateCheckResponseDataCompanyUnion) AsValidateCheckResponseDataCompanyEoriValidationCompany() (v ValidateCheckResponseDataCompanyEoriValidationCompany) {
-	apijson.UnmarshalRoot(json.RawMessage(u.JSON.raw), &v)
-	return
+func (r validateCheckResponseDataCompanyJSON) RawJSON() string {
+	return r.raw
 }
 
-// Returns the unmodified JSON received from the API
-func (u ValidateCheckResponseDataCompanyUnion) RawJSON() string { return u.JSON.raw }
+func (r *ValidateCheckResponseDataCompany) UnmarshalJSON(data []byte) (err error) {
+	*r = ValidateCheckResponseDataCompany{}
+	err = apijson.UnmarshalRoot(data, &r.union)
+	if err != nil {
+		return err
+	}
+	return apijson.Port(r.union, &r)
+}
 
-func (r *ValidateCheckResponseDataCompanyUnion) UnmarshalJSON(data []byte) error {
-	return apijson.UnmarshalRoot(data, r)
+// AsUnion returns a [ValidateCheckResponseDataCompanyUnion] interface which you
+// can cast to the specific types for more type safety.
+//
+// Possible runtime types of the union are
+// [ValidateCheckResponseDataCompanyValidationCompany],
+// [ValidateCheckResponseDataCompanyEoriValidationCompany].
+func (r ValidateCheckResponseDataCompany) AsUnion() ValidateCheckResponseDataCompanyUnion {
+	return r.union
+}
+
+// Union satisfied by [ValidateCheckResponseDataCompanyValidationCompany] or
+// [ValidateCheckResponseDataCompanyEoriValidationCompany].
+type ValidateCheckResponseDataCompanyUnion interface {
+	implementsValidateCheckResponseDataCompany()
+}
+
+func init() {
+	apijson.RegisterUnion(
+		reflect.TypeOf((*ValidateCheckResponseDataCompanyUnion)(nil)).Elem(),
+		"",
+		apijson.UnionVariant{
+			TypeFilter: gjson.JSON,
+			Type:       reflect.TypeOf(ValidateCheckResponseDataCompanyValidationCompany{}),
+		},
+		apijson.UnionVariant{
+			TypeFilter: gjson.JSON,
+			Type:       reflect.TypeOf(ValidateCheckResponseDataCompanyEoriValidationCompany{}),
+		},
+	)
 }
 
 type ValidateCheckResponseDataCompanyValidationCompany struct {
@@ -146,22 +183,30 @@ type ValidateCheckResponseDataCompanyValidationCompany struct {
 	CompanyName    string `json:"company_name"`
 	CountryCode    string `json:"country_code"`
 	// The VAT number (without country code prefix).
-	VatNumber string `json:"vat_number"`
-	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
-	JSON struct {
-		CompanyAddress respjson.Field
-		CompanyName    respjson.Field
-		CountryCode    respjson.Field
-		VatNumber      respjson.Field
-		ExtraFields    map[string]respjson.Field
-		raw            string
-	} `json:"-"`
+	VatNumber string                                                `json:"vat_number"`
+	JSON      validateCheckResponseDataCompanyValidationCompanyJSON `json:"-"`
 }
 
-// Returns the unmodified JSON received from the API
-func (r ValidateCheckResponseDataCompanyValidationCompany) RawJSON() string { return r.JSON.raw }
-func (r *ValidateCheckResponseDataCompanyValidationCompany) UnmarshalJSON(data []byte) error {
+// validateCheckResponseDataCompanyValidationCompanyJSON contains the JSON metadata
+// for the struct [ValidateCheckResponseDataCompanyValidationCompany]
+type validateCheckResponseDataCompanyValidationCompanyJSON struct {
+	CompanyAddress apijson.Field
+	CompanyName    apijson.Field
+	CountryCode    apijson.Field
+	VatNumber      apijson.Field
+	raw            string
+	ExtraFields    map[string]apijson.Field
+}
+
+func (r *ValidateCheckResponseDataCompanyValidationCompany) UnmarshalJSON(data []byte) (err error) {
 	return apijson.UnmarshalRoot(data, r)
+}
+
+func (r validateCheckResponseDataCompanyValidationCompanyJSON) RawJSON() string {
+	return r.raw
+}
+
+func (r ValidateCheckResponseDataCompanyValidationCompany) implementsValidateCheckResponseDataCompany() {
 }
 
 type ValidateCheckResponseDataCompanyEoriValidationCompany struct {
@@ -169,43 +214,50 @@ type ValidateCheckResponseDataCompanyEoriValidationCompany struct {
 	CompanyName    string `json:"company_name"`
 	CountryCode    string `json:"country_code"`
 	// The EORI number (without country code prefix).
-	EoriNumber string `json:"eori_number"`
-	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
-	JSON struct {
-		CompanyAddress respjson.Field
-		CompanyName    respjson.Field
-		CountryCode    respjson.Field
-		EoriNumber     respjson.Field
-		ExtraFields    map[string]respjson.Field
-		raw            string
-	} `json:"-"`
+	EoriNumber string                                                    `json:"eori_number"`
+	JSON       validateCheckResponseDataCompanyEoriValidationCompanyJSON `json:"-"`
 }
 
-// Returns the unmodified JSON received from the API
-func (r ValidateCheckResponseDataCompanyEoriValidationCompany) RawJSON() string { return r.JSON.raw }
-func (r *ValidateCheckResponseDataCompanyEoriValidationCompany) UnmarshalJSON(data []byte) error {
+// validateCheckResponseDataCompanyEoriValidationCompanyJSON contains the JSON
+// metadata for the struct [ValidateCheckResponseDataCompanyEoriValidationCompany]
+type validateCheckResponseDataCompanyEoriValidationCompanyJSON struct {
+	CompanyAddress apijson.Field
+	CompanyName    apijson.Field
+	CountryCode    apijson.Field
+	EoriNumber     apijson.Field
+	raw            string
+	ExtraFields    map[string]apijson.Field
+}
+
+func (r *ValidateCheckResponseDataCompanyEoriValidationCompany) UnmarshalJSON(data []byte) (err error) {
 	return apijson.UnmarshalRoot(data, r)
+}
+
+func (r validateCheckResponseDataCompanyEoriValidationCompanyJSON) RawJSON() string {
+	return r.raw
+}
+
+func (r ValidateCheckResponseDataCompanyEoriValidationCompany) implementsValidateCheckResponseDataCompany() {
 }
 
 type ValidateCheckParams struct {
 	// The EORI number to validate. Must include the leading 2-character country code
 	// (e.g. "GB123456789123"). UK and EU only.
-	EoriNumber param.Opt[string] `query:"eori_number,omitzero" json:"-"`
+	EoriNumber param.Field[string] `query:"eori_number"`
 	// Your own VAT number. If supplied, the response will include a unique
 	// consultation number issued by the relevant authority (VIES or HMRC). Must
 	// include the leading 2-character country code.
 	//
 	// Note: GB requester numbers only work for GB validations; EU requester numbers
 	// only work for EU validations. Cross-region is not supported.
-	RequesterVatNumber param.Opt[string] `query:"requester_vat_number,omitzero" json:"-"`
+	RequesterVatNumber param.Field[string] `query:"requester_vat_number"`
 	// The VAT number to validate. Must include the leading 2-character country code
 	// (e.g. "GB288305674", "FR12345678901").
-	VatNumber param.Opt[string] `query:"vat_number,omitzero" json:"-"`
-	paramObj
+	VatNumber param.Field[string] `query:"vat_number"`
 }
 
 // URLQuery serializes [ValidateCheckParams]'s query parameters as `url.Values`.
-func (r ValidateCheckParams) URLQuery() (v url.Values, err error) {
+func (r ValidateCheckParams) URLQuery() (v url.Values) {
 	return apiquery.MarshalWithSettings(r, apiquery.QuerySettings{
 		ArrayFormat:  apiquery.ArrayQueryFormatComma,
 		NestedFormat: apiquery.NestedQueryFormatBrackets,
