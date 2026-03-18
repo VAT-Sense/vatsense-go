@@ -1,7 +1,7 @@
 package apijson
 
 import (
-	"github.com/stainless-sdks/vat-sense-go/packages/respjson"
+	"github.com/VAT-Sense/vatsense-go/packages/respjson"
 	"reflect"
 )
 

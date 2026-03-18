@@ -1,8 +1,8 @@
 package paramutil
 
 import (
-	"github.com/stainless-sdks/vat-sense-go/packages/param"
-	"github.com/stainless-sdks/vat-sense-go/packages/respjson"
+	"github.com/VAT-Sense/vatsense-go/packages/param"
+	"github.com/VAT-Sense/vatsense-go/packages/respjson"
 )
 
 func AddrIfPresent[T comparable](v param.Opt[T]) *T {

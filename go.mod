@@ -1,4 +1,4 @@
-module github.com/stainless-sdks/vat-sense-go
+module github.com/VAT-Sense/vatsense-go
 
 go 1.22
 

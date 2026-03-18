@@ -11,12 +11,12 @@ import (
 	"net/url"
 	"slices"
 
-	"github.com/stainless-sdks/vat-sense-go/internal/apijson"
-	shimjson "github.com/stainless-sdks/vat-sense-go/internal/encoding/json"
-	"github.com/stainless-sdks/vat-sense-go/internal/requestconfig"
-	"github.com/stainless-sdks/vat-sense-go/option"
-	"github.com/stainless-sdks/vat-sense-go/packages/param"
-	"github.com/stainless-sdks/vat-sense-go/packages/respjson"
+	"github.com/VAT-Sense/vatsense-go/internal/apijson"
+	shimjson "github.com/VAT-Sense/vatsense-go/internal/encoding/json"
+	"github.com/VAT-Sense/vatsense-go/internal/requestconfig"
+	"github.com/VAT-Sense/vatsense-go/option"
+	"github.com/VAT-Sense/vatsense-go/packages/param"
+	"github.com/VAT-Sense/vatsense-go/packages/respjson"
 )
 
 // VAT-compliant invoice management

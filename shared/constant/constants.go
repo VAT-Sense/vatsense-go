@@ -3,7 +3,7 @@
 package constant
 
 import (
-	shimjson "github.com/stainless-sdks/vat-sense-go/internal/encoding/json"
+	shimjson "github.com/VAT-Sense/vatsense-go/internal/encoding/json"
 )
 
 type Constant[T any] interface {

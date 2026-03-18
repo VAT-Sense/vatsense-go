@@ -3,8 +3,8 @@
 package vatsense
 
 import (
-	"github.com/stainless-sdks/vat-sense-go/internal/apierror"
-	"github.com/stainless-sdks/vat-sense-go/packages/param"
+	"github.com/VAT-Sense/vatsense-go/internal/apierror"
+	"github.com/VAT-Sense/vatsense-go/packages/param"
 )
 
 // aliased to make [param.APIUnion] private when embedding
