@@ -28,9 +28,9 @@ func TestValidateCheckWithOptionalParams(t *testing.T) {
 		option.WithPassword("My Password"),
 	)
 	_, err := client.Validate.Check(context.TODO(), vatsense.ValidateCheckParams{
-		EoriNumber:         vatsense.F("GB123456789123"),
-		RequesterVatNumber: vatsense.F("GB288305674"),
-		VatNumber:          vatsense.F("GB288305674"),
+		EoriNumber:         vatsense.String("GB123456789123"),
+		RequesterVatNumber: vatsense.String("GB288305674"),
+		VatNumber:          vatsense.String("GB288305674"),
 	})
 	if err != nil {
 		var apierr *vatsense.Error
