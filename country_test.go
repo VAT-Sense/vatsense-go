@@ -28,8 +28,8 @@ func TestCountryListWithOptionalParams(t *testing.T) {
 		option.WithPassword("My Password"),
 	)
 	_, err := client.Countries.List(context.TODO(), vatsense.CountryListParams{
-		CountryCode: vatsense.F("GB"),
-		IPAddress:   vatsense.F("86.27.166.97"),
+		CountryCode: vatsense.String("GB"),
+		IPAddress:   vatsense.String("86.27.166.97"),
 	})
 	if err != nil {
 		var apierr *vatsense.Error
@@ -55,7 +55,7 @@ func TestCountryListProvinces(t *testing.T) {
 		option.WithPassword("My Password"),
 	)
 	_, err := client.Countries.ListProvinces(context.TODO(), vatsense.CountryListProvincesParams{
-		CountryCode: vatsense.F("CA"),
+		CountryCode: "CA",
 	})
 	if err != nil {
 		var apierr *vatsense.Error

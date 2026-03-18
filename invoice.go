@@ -4,6 +4,7 @@ package vatsense
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -13,9 +14,11 @@ import (
 
 	"github.com/VAT-Sense/vatsense-go/internal/apijson"
 	"github.com/VAT-Sense/vatsense-go/internal/apiquery"
-	"github.com/VAT-Sense/vatsense-go/internal/param"
+	shimjson "github.com/VAT-Sense/vatsense-go/internal/encoding/json"
 	"github.com/VAT-Sense/vatsense-go/internal/requestconfig"
 	"github.com/VAT-Sense/vatsense-go/option"
+	"github.com/VAT-Sense/vatsense-go/packages/param"
+	"github.com/VAT-Sense/vatsense-go/packages/respjson"
 )
 
 // VAT-compliant invoice management
@@ -27,17 +30,17 @@ import (
 // automatically. You should not instantiate this service directly, and instead use
 // the [NewInvoiceService] method instead.
 type InvoiceService struct {
-	Options []option.RequestOption
+	options []option.RequestOption
 	// VAT-compliant invoice management
-	Item *InvoiceItemService
+	Item InvoiceItemService
 }
 
 // NewInvoiceService generates a new service that applies the given options to each
 // request. These options are applied after the parent client's options (if there
 // is one), and before any request-specific options.
-func NewInvoiceService(opts ...option.RequestOption) (r *InvoiceService) {
-	r = &InvoiceService{}
-	r.Options = opts
+func NewInvoiceService(opts ...option.RequestOption) (r InvoiceService) {
+	r = InvoiceService{}
+	r.options = opts
 	r.Item = NewInvoiceItemService(opts...)
 	return
 }
@@ -47,7 +50,7 @@ func NewInvoiceService(opts ...option.RequestOption) (r *InvoiceService) {
 //
 // Not available with sandbox API keys.
 func (r *InvoiceService) New(ctx context.Context, body InvoiceNewParams, opts ...option.RequestOption) (res *InvoiceResponse, err error) {
-	opts = slices.Concat(r.Options, opts)
+	opts = slices.Concat(r.options, opts)
 	path := "invoice"
 	err = requestconfig.ExecuteNewRequest(ctx, http.MethodPost, path, body, &res, opts...)
 	return res, err
@@ -55,31 +58,31 @@ func (r *InvoiceService) New(ctx context.Context, body InvoiceNewParams, opts ..
 
 // Retrieve a specific invoice by its ID.
 func (r *InvoiceService) Get(ctx context.Context, invoiceID string, opts ...option.RequestOption) (res *InvoiceResponse, err error) {
-	opts = slices.Concat(r.Options, opts)
+	opts = slices.Concat(r.options, opts)
 	if invoiceID == "" {
 		err = errors.New("missing required invoice_id parameter")
 		return nil, err
 	}
-	path := fmt.Sprintf("invoice/%s", invoiceID)
+	path := fmt.Sprintf("invoice/%s", url.PathEscape(invoiceID))
 	err = requestconfig.ExecuteNewRequest(ctx, http.MethodGet, path, nil, &res, opts...)
 	return res, err
 }
 
 // Update an existing invoice. Only the fields provided will be updated.
 func (r *InvoiceService) Update(ctx context.Context, invoiceID string, body InvoiceUpdateParams, opts ...option.RequestOption) (res *InvoiceResponse, err error) {
-	opts = slices.Concat(r.Options, opts)
+	opts = slices.Concat(r.options, opts)
 	if invoiceID == "" {
 		err = errors.New("missing required invoice_id parameter")
 		return nil, err
 	}
-	path := fmt.Sprintf("invoice/%s", invoiceID)
+	path := fmt.Sprintf("invoice/%s", url.PathEscape(invoiceID))
 	err = requestconfig.ExecuteNewRequest(ctx, http.MethodPatch, path, body, &res, opts...)
 	return res, err
 }
 
 // Retrieve a paginated list of all invoices.
 func (r *InvoiceService) List(ctx context.Context, query InvoiceListParams, opts ...option.RequestOption) (res *InvoiceListResponse, err error) {
-	opts = slices.Concat(r.Options, opts)
+	opts = slices.Concat(r.options, opts)
 	path := "invoice"
 	err = requestconfig.ExecuteNewRequest(ctx, http.MethodGet, path, query, &res, opts...)
 	return res, err
@@ -87,53 +90,63 @@ func (r *InvoiceService) List(ctx context.Context, query InvoiceListParams, opts
 
 // Permanently delete an invoice.
 func (r *InvoiceService) Delete(ctx context.Context, invoiceID string, opts ...option.RequestOption) (res *InvoiceDeleteResponse, err error) {
-	opts = slices.Concat(r.Options, opts)
+	opts = slices.Concat(r.options, opts)
 	if invoiceID == "" {
 		err = errors.New("missing required invoice_id parameter")
 		return nil, err
 	}
-	path := fmt.Sprintf("invoice/%s", invoiceID)
+	path := fmt.Sprintf("invoice/%s", url.PathEscape(invoiceID))
 	err = requestconfig.ExecuteNewRequest(ctx, http.MethodDelete, path, nil, &res, opts...)
 	return res, err
 }
 
+// The properties Business, CurrencyCode, Date, Items, TaxPoint are required.
 type CreateInvoiceParam struct {
-	Business param.Field[InvoiceBusinessInputParam] `json:"business" api:"required"`
+	Business InvoiceBusinessInputParam `json:"business,omitzero" api:"required"`
 	// The 3-character currency code the invoice is billed in.
-	CurrencyCode param.Field[string] `json:"currency_code" api:"required"`
+	CurrencyCode string `json:"currency_code" api:"required"`
 	// The date the invoice was issued (YYYY-MM-DD or YYYY-MM-DD HH:MM:SS).
-	Date  param.Field[string]                  `json:"date" api:"required"`
-	Items param.Field[[]InvoiceItemInputParam] `json:"items" api:"required"`
+	Date  string                  `json:"date" api:"required"`
+	Items []InvoiceItemInputParam `json:"items,omitzero" api:"required"`
 	// The tax point or "time of supply" (YYYY-MM-DD or YYYY-MM-DD HH:MM:SS).
-	TaxPoint   param.Field[string]                      `json:"tax_point" api:"required"`
-	Conversion param.Field[InvoiceConversionInputParam] `json:"conversion"`
-	Customer   param.Field[InvoiceCustomerInputParam]   `json:"customer"`
+	TaxPoint string `json:"tax_point" api:"required"`
 	// Whether the invoice is subject to VAT.
-	HasVat param.Field[bool] `json:"has_vat"`
+	HasVat param.Opt[bool] `json:"has_vat,omitzero"`
 	// A unique invoice number. If not provided, defaults to an auto-incremented
 	// number.
-	InvoiceNumber param.Field[string] `json:"invoice_number"`
+	InvoiceNumber param.Opt[string] `json:"invoice_number,omitzero"`
 	// Whether the invoice is a copy of a primary invoice.
-	IsCopy param.Field[bool] `json:"is_copy"`
+	IsCopy param.Opt[bool] `json:"is_copy,omitzero"`
 	// Whether the invoice is zero-rated due to reverse charge.
-	IsReverseCharge param.Field[bool] `json:"is_reverse_charge"`
+	IsReverseCharge param.Opt[bool] `json:"is_reverse_charge,omitzero"`
 	// Any additional notes for the invoice.
-	Notes param.Field[string] `json:"notes"`
+	Notes param.Opt[string] `json:"notes,omitzero"`
 	// Pad the auto-generated invoice number with leading zeros to this length.
-	PadInvoiceNumber param.Field[int64] `json:"pad_invoice_number"`
+	PadInvoiceNumber param.Opt[int64] `json:"pad_invoice_number,omitzero"`
 	// A serial prepended to the auto-generated invoice number. Each unique serial has
 	// its own auto-increment range.
-	Serial param.Field[string] `json:"serial"`
-	// Whether item prices include or exclude VAT.
-	TaxType param.Field[CreateInvoiceTaxType] `json:"tax_type"`
-	// The type of invoice.
-	Type param.Field[CreateInvoiceType] `json:"type"`
+	Serial param.Opt[string] `json:"serial,omitzero"`
 	// Whether the invoice has been zero-rated.
-	ZeroRated param.Field[bool] `json:"zero_rated"`
+	ZeroRated  param.Opt[bool]             `json:"zero_rated,omitzero"`
+	Conversion InvoiceConversionInputParam `json:"conversion,omitzero"`
+	Customer   InvoiceCustomerInputParam   `json:"customer,omitzero"`
+	// Whether item prices include or exclude VAT.
+	//
+	// Any of "incl", "excl".
+	TaxType CreateInvoiceTaxType `json:"tax_type,omitzero"`
+	// The type of invoice.
+	//
+	// Any of "sale", "refund".
+	Type CreateInvoiceType `json:"type,omitzero"`
+	paramObj
 }
 
 func (r CreateInvoiceParam) MarshalJSON() (data []byte, err error) {
-	return apijson.MarshalRoot(r)
+	type shadow CreateInvoiceParam
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *CreateInvoiceParam) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
 }
 
 // Whether item prices include or exclude VAT.
@@ -144,14 +157,6 @@ const (
 	CreateInvoiceTaxTypeExcl CreateInvoiceTaxType = "excl"
 )
 
-func (r CreateInvoiceTaxType) IsKnown() bool {
-	switch r {
-	case CreateInvoiceTaxTypeIncl, CreateInvoiceTaxTypeExcl:
-		return true
-	}
-	return false
-}
-
 // The type of invoice.
 type CreateInvoiceType string
 
@@ -159,14 +164,6 @@ const (
 	CreateInvoiceTypeSale   CreateInvoiceType = "sale"
 	CreateInvoiceTypeRefund CreateInvoiceType = "refund"
 )
-
-func (r CreateInvoiceType) IsKnown() bool {
-	switch r {
-	case CreateInvoiceTypeSale, CreateInvoiceTypeRefund:
-		return true
-	}
-	return false
-}
 
 type Invoice struct {
 	ID            string                 `json:"id"`
@@ -179,112 +176,103 @@ type Invoice struct {
 	HasVat        bool                   `json:"has_vat"`
 	InvoiceNumber string                 `json:"invoice_number"`
 	// Unique URL to view the invoice. Append "/pdf" to download a PDF copy.
-	InvoiceURL      string         `json:"invoice_url" format:"uri"`
-	IsCopy          bool           `json:"is_copy"`
-	IsReverseCharge bool           `json:"is_reverse_charge"`
-	Items           []InvoiceItem  `json:"items"`
-	Notes           string         `json:"notes" api:"nullable"`
-	NumItems        int64          `json:"num_items"`
-	Object          InvoiceObject  `json:"object"`
-	TaxPoint        string         `json:"tax_point"`
-	TaxType         InvoiceTaxType `json:"tax_type"`
-	Totals          InvoiceTotals  `json:"totals"`
-	Type            InvoiceType    `json:"type"`
-	Updated         time.Time      `json:"updated" format:"date-time"`
-	ZeroRated       bool           `json:"zero_rated"`
-	JSON            invoiceJSON    `json:"-"`
+	InvoiceURL      string        `json:"invoice_url" format:"uri"`
+	IsCopy          bool          `json:"is_copy"`
+	IsReverseCharge bool          `json:"is_reverse_charge"`
+	Items           []InvoiceItem `json:"items"`
+	Notes           string        `json:"notes" api:"nullable"`
+	NumItems        int64         `json:"num_items"`
+	// Any of "invoice".
+	Object   InvoiceObject `json:"object"`
+	TaxPoint string        `json:"tax_point"`
+	// Any of "incl", "excl".
+	TaxType InvoiceTaxType `json:"tax_type"`
+	Totals  InvoiceTotals  `json:"totals"`
+	// Any of "sale", "refund".
+	Type      InvoiceType `json:"type"`
+	Updated   time.Time   `json:"updated" format:"date-time"`
+	ZeroRated bool        `json:"zero_rated"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		ID              respjson.Field
+		Business        respjson.Field
+		Conversion      respjson.Field
+		Created         respjson.Field
+		CurrencyCode    respjson.Field
+		Customer        respjson.Field
+		Date            respjson.Field
+		HasVat          respjson.Field
+		InvoiceNumber   respjson.Field
+		InvoiceURL      respjson.Field
+		IsCopy          respjson.Field
+		IsReverseCharge respjson.Field
+		Items           respjson.Field
+		Notes           respjson.Field
+		NumItems        respjson.Field
+		Object          respjson.Field
+		TaxPoint        respjson.Field
+		TaxType         respjson.Field
+		Totals          respjson.Field
+		Type            respjson.Field
+		Updated         respjson.Field
+		ZeroRated       respjson.Field
+		ExtraFields     map[string]respjson.Field
+		raw             string
+	} `json:"-"`
 }
 
-// invoiceJSON contains the JSON metadata for the struct [Invoice]
-type invoiceJSON struct {
-	ID              apijson.Field
-	Business        apijson.Field
-	Conversion      apijson.Field
-	Created         apijson.Field
-	CurrencyCode    apijson.Field
-	Customer        apijson.Field
-	Date            apijson.Field
-	HasVat          apijson.Field
-	InvoiceNumber   apijson.Field
-	InvoiceURL      apijson.Field
-	IsCopy          apijson.Field
-	IsReverseCharge apijson.Field
-	Items           apijson.Field
-	Notes           apijson.Field
-	NumItems        apijson.Field
-	Object          apijson.Field
-	TaxPoint        apijson.Field
-	TaxType         apijson.Field
-	Totals          apijson.Field
-	Type            apijson.Field
-	Updated         apijson.Field
-	ZeroRated       apijson.Field
-	raw             string
-	ExtraFields     map[string]apijson.Field
-}
-
-func (r *Invoice) UnmarshalJSON(data []byte) (err error) {
+// Returns the unmodified JSON received from the API
+func (r Invoice) RawJSON() string { return r.JSON.raw }
+func (r *Invoice) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
-}
-
-func (r invoiceJSON) RawJSON() string {
-	return r.raw
 }
 
 type InvoiceBusiness struct {
-	Address       string              `json:"address"`
-	CompanyNumber string              `json:"company_number"`
-	Logo          string              `json:"logo" api:"nullable"`
-	Name          string              `json:"name"`
-	VatNumber     string              `json:"vat_number"`
-	JSON          invoiceBusinessJSON `json:"-"`
+	Address       string `json:"address"`
+	CompanyNumber string `json:"company_number"`
+	Logo          string `json:"logo" api:"nullable"`
+	Name          string `json:"name"`
+	VatNumber     string `json:"vat_number"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Address       respjson.Field
+		CompanyNumber respjson.Field
+		Logo          respjson.Field
+		Name          respjson.Field
+		VatNumber     respjson.Field
+		ExtraFields   map[string]respjson.Field
+		raw           string
+	} `json:"-"`
 }
 
-// invoiceBusinessJSON contains the JSON metadata for the struct [InvoiceBusiness]
-type invoiceBusinessJSON struct {
-	Address       apijson.Field
-	CompanyNumber apijson.Field
-	Logo          apijson.Field
-	Name          apijson.Field
-	VatNumber     apijson.Field
-	raw           string
-	ExtraFields   map[string]apijson.Field
-}
-
-func (r *InvoiceBusiness) UnmarshalJSON(data []byte) (err error) {
+// Returns the unmodified JSON received from the API
+func (r InvoiceBusiness) RawJSON() string { return r.JSON.raw }
+func (r *InvoiceBusiness) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
-}
-
-func (r invoiceBusinessJSON) RawJSON() string {
-	return r.raw
 }
 
 type InvoiceCustomer struct {
-	Address       string              `json:"address"`
-	CompanyNumber string              `json:"company_number"`
-	Logo          string              `json:"logo" api:"nullable"`
-	Name          string              `json:"name"`
-	VatNumber     string              `json:"vat_number"`
-	JSON          invoiceCustomerJSON `json:"-"`
+	Address       string `json:"address"`
+	CompanyNumber string `json:"company_number"`
+	Logo          string `json:"logo" api:"nullable"`
+	Name          string `json:"name"`
+	VatNumber     string `json:"vat_number"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Address       respjson.Field
+		CompanyNumber respjson.Field
+		Logo          respjson.Field
+		Name          respjson.Field
+		VatNumber     respjson.Field
+		ExtraFields   map[string]respjson.Field
+		raw           string
+	} `json:"-"`
 }
 
-// invoiceCustomerJSON contains the JSON metadata for the struct [InvoiceCustomer]
-type invoiceCustomerJSON struct {
-	Address       apijson.Field
-	CompanyNumber apijson.Field
-	Logo          apijson.Field
-	Name          apijson.Field
-	VatNumber     apijson.Field
-	raw           string
-	ExtraFields   map[string]apijson.Field
-}
-
-func (r *InvoiceCustomer) UnmarshalJSON(data []byte) (err error) {
+// Returns the unmodified JSON received from the API
+func (r InvoiceCustomer) RawJSON() string { return r.JSON.raw }
+func (r *InvoiceCustomer) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
-}
-
-func (r invoiceCustomerJSON) RawJSON() string {
-	return r.raw
 }
 
 type InvoiceObject string
@@ -293,28 +281,12 @@ const (
 	InvoiceObjectInvoice InvoiceObject = "invoice"
 )
 
-func (r InvoiceObject) IsKnown() bool {
-	switch r {
-	case InvoiceObjectInvoice:
-		return true
-	}
-	return false
-}
-
 type InvoiceTaxType string
 
 const (
 	InvoiceTaxTypeIncl InvoiceTaxType = "incl"
 	InvoiceTaxTypeExcl InvoiceTaxType = "excl"
 )
-
-func (r InvoiceTaxType) IsKnown() bool {
-	switch r {
-	case InvoiceTaxTypeIncl, InvoiceTaxTypeExcl:
-		return true
-	}
-	return false
-}
 
 type InvoiceTotals struct {
 	// Total discount amount.
@@ -324,26 +296,22 @@ type InvoiceTotals struct {
 	// Grand total.
 	Total float64 `json:"total"`
 	// Total VAT amount.
-	Vat  float64           `json:"vat"`
-	JSON invoiceTotalsJSON `json:"-"`
+	Vat float64 `json:"vat"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Discount    respjson.Field
+		Subtotal    respjson.Field
+		Total       respjson.Field
+		Vat         respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
 }
 
-// invoiceTotalsJSON contains the JSON metadata for the struct [InvoiceTotals]
-type invoiceTotalsJSON struct {
-	Discount    apijson.Field
-	Subtotal    apijson.Field
-	Total       apijson.Field
-	Vat         apijson.Field
-	raw         string
-	ExtraFields map[string]apijson.Field
-}
-
-func (r *InvoiceTotals) UnmarshalJSON(data []byte) (err error) {
+// Returns the unmodified JSON received from the API
+func (r InvoiceTotals) RawJSON() string { return r.JSON.raw }
+func (r *InvoiceTotals) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
-}
-
-func (r invoiceTotalsJSON) RawJSON() string {
-	return r.raw
 }
 
 type InvoiceType string
@@ -353,187 +321,196 @@ const (
 	InvoiceTypeRefund InvoiceType = "refund"
 )
 
-func (r InvoiceType) IsKnown() bool {
-	switch r {
-	case InvoiceTypeSale, InvoiceTypeRefund:
-		return true
-	}
-	return false
-}
-
+// The properties Address, Name, VatNumber are required.
 type InvoiceBusinessInputParam struct {
 	// Your business trading address.
-	Address param.Field[string] `json:"address" api:"required"`
+	Address string `json:"address" api:"required"`
 	// Your business trading name.
-	Name param.Field[string] `json:"name" api:"required"`
+	Name string `json:"name" api:"required"`
 	// Your business VAT number.
-	VatNumber   param.Field[string] `json:"vat_number" api:"required"`
-	BankAccount param.Field[string] `json:"bank_account"`
+	VatNumber   string            `json:"vat_number" api:"required"`
+	BankAccount param.Opt[string] `json:"bank_account,omitzero"`
 	// Your business company number.
-	CompanyNumber param.Field[string] `json:"company_number"`
-	Email         param.Field[string] `json:"email" format:"email"`
+	CompanyNumber param.Opt[string] `json:"company_number,omitzero"`
+	Email         param.Opt[string] `json:"email,omitzero" format:"email"`
 	// URL to your company logo (HTTPS only, .svg/.jpg/.png). Recommended 240px by
 	// 60px.
-	Logo    param.Field[string] `json:"logo" format:"uri"`
-	Phone   param.Field[string] `json:"phone"`
-	Website param.Field[string] `json:"website" format:"uri"`
+	Logo    param.Opt[string] `json:"logo,omitzero" format:"uri"`
+	Phone   param.Opt[string] `json:"phone,omitzero"`
+	Website param.Opt[string] `json:"website,omitzero" format:"uri"`
+	paramObj
 }
 
 func (r InvoiceBusinessInputParam) MarshalJSON() (data []byte, err error) {
-	return apijson.MarshalRoot(r)
+	type shadow InvoiceBusinessInputParam
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *InvoiceBusinessInputParam) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
 }
 
 type InvoiceConversionInput struct {
 	// The 3-character currency code for the conversion.
 	CurrencyCode string `json:"currency_code" api:"required"`
 	// The rate of conversion.
-	Rate float64                    `json:"rate" api:"required"`
-	JSON invoiceConversionInputJSON `json:"-"`
+	Rate float64 `json:"rate" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		CurrencyCode respjson.Field
+		Rate         respjson.Field
+		ExtraFields  map[string]respjson.Field
+		raw          string
+	} `json:"-"`
 }
 
-// invoiceConversionInputJSON contains the JSON metadata for the struct
-// [InvoiceConversionInput]
-type invoiceConversionInputJSON struct {
-	CurrencyCode apijson.Field
-	Rate         apijson.Field
-	raw          string
-	ExtraFields  map[string]apijson.Field
-}
-
-func (r *InvoiceConversionInput) UnmarshalJSON(data []byte) (err error) {
+// Returns the unmodified JSON received from the API
+func (r InvoiceConversionInput) RawJSON() string { return r.JSON.raw }
+func (r *InvoiceConversionInput) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-func (r invoiceConversionInputJSON) RawJSON() string {
-	return r.raw
+// ToParam converts this InvoiceConversionInput to a InvoiceConversionInputParam.
+//
+// Warning: the fields of the param type will not be present. ToParam should only
+// be used at the last possible moment before sending a request. Test for this with
+// InvoiceConversionInputParam.Overrides()
+func (r InvoiceConversionInput) ToParam() InvoiceConversionInputParam {
+	return param.Override[InvoiceConversionInputParam](json.RawMessage(r.RawJSON()))
 }
 
+// The properties CurrencyCode, Rate are required.
 type InvoiceConversionInputParam struct {
 	// The 3-character currency code for the conversion.
-	CurrencyCode param.Field[string] `json:"currency_code" api:"required"`
+	CurrencyCode string `json:"currency_code" api:"required"`
 	// The rate of conversion.
-	Rate param.Field[float64] `json:"rate" api:"required"`
+	Rate float64 `json:"rate" api:"required"`
+	paramObj
 }
 
 func (r InvoiceConversionInputParam) MarshalJSON() (data []byte, err error) {
-	return apijson.MarshalRoot(r)
+	type shadow InvoiceConversionInputParam
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *InvoiceConversionInputParam) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
 }
 
+// The property Name is required.
 type InvoiceCustomerInputParam struct {
 	// The customer's trading name.
-	Name          param.Field[string] `json:"name" api:"required"`
-	Address       param.Field[string] `json:"address"`
-	CompanyNumber param.Field[string] `json:"company_number"`
-	CountryCode   param.Field[string] `json:"country_code"`
-	Email         param.Field[string] `json:"email" format:"email"`
+	Name          string            `json:"name" api:"required"`
+	Address       param.Opt[string] `json:"address,omitzero"`
+	CompanyNumber param.Opt[string] `json:"company_number,omitzero"`
+	CountryCode   param.Opt[string] `json:"country_code,omitzero"`
+	Email         param.Opt[string] `json:"email,omitzero" format:"email"`
 	// URL to the customer logo (HTTPS only, .jpg/.png).
-	Logo      param.Field[string] `json:"logo" format:"uri"`
-	VatNumber param.Field[string] `json:"vat_number"`
+	Logo      param.Opt[string] `json:"logo,omitzero" format:"uri"`
+	VatNumber param.Opt[string] `json:"vat_number,omitzero"`
+	paramObj
 }
 
 func (r InvoiceCustomerInputParam) MarshalJSON() (data []byte, err error) {
-	return apijson.MarshalRoot(r)
+	type shadow InvoiceCustomerInputParam
+	return param.MarshalObject(r, (*shadow)(&r))
+}
+func (r *InvoiceCustomerInputParam) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
 }
 
 type InvoiceResponse struct {
-	Code    int64               `json:"code"`
-	Data    Invoice             `json:"data"`
-	Success bool                `json:"success"`
-	JSON    invoiceResponseJSON `json:"-"`
+	Code    int64   `json:"code"`
+	Data    Invoice `json:"data"`
+	Success bool    `json:"success"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Code        respjson.Field
+		Data        respjson.Field
+		Success     respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
 }
 
-// invoiceResponseJSON contains the JSON metadata for the struct [InvoiceResponse]
-type invoiceResponseJSON struct {
-	Code        apijson.Field
-	Data        apijson.Field
-	Success     apijson.Field
-	raw         string
-	ExtraFields map[string]apijson.Field
-}
-
-func (r *InvoiceResponse) UnmarshalJSON(data []byte) (err error) {
+// Returns the unmodified JSON received from the API
+func (r InvoiceResponse) RawJSON() string { return r.JSON.raw }
+func (r *InvoiceResponse) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
-}
-
-func (r invoiceResponseJSON) RawJSON() string {
-	return r.raw
 }
 
 type InvoiceListResponse struct {
-	Code    int64                   `json:"code"`
-	Data    []Invoice               `json:"data"`
-	Success bool                    `json:"success"`
-	JSON    invoiceListResponseJSON `json:"-"`
+	Code    int64     `json:"code"`
+	Data    []Invoice `json:"data"`
+	Success bool      `json:"success"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Code        respjson.Field
+		Data        respjson.Field
+		Success     respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
 }
 
-// invoiceListResponseJSON contains the JSON metadata for the struct
-// [InvoiceListResponse]
-type invoiceListResponseJSON struct {
-	Code        apijson.Field
-	Data        apijson.Field
-	Success     apijson.Field
-	raw         string
-	ExtraFields map[string]apijson.Field
-}
-
-func (r *InvoiceListResponse) UnmarshalJSON(data []byte) (err error) {
+// Returns the unmodified JSON received from the API
+func (r InvoiceListResponse) RawJSON() string { return r.JSON.raw }
+func (r *InvoiceListResponse) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
-}
-
-func (r invoiceListResponseJSON) RawJSON() string {
-	return r.raw
 }
 
 type InvoiceDeleteResponse struct {
-	Code    int64                     `json:"code" api:"required"`
-	Success bool                      `json:"success" api:"required"`
-	JSON    invoiceDeleteResponseJSON `json:"-"`
+	Code    int64 `json:"code" api:"required"`
+	Success bool  `json:"success" api:"required"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Code        respjson.Field
+		Success     respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
 }
 
-// invoiceDeleteResponseJSON contains the JSON metadata for the struct
-// [InvoiceDeleteResponse]
-type invoiceDeleteResponseJSON struct {
-	Code        apijson.Field
-	Success     apijson.Field
-	raw         string
-	ExtraFields map[string]apijson.Field
-}
-
-func (r *InvoiceDeleteResponse) UnmarshalJSON(data []byte) (err error) {
+// Returns the unmodified JSON received from the API
+func (r InvoiceDeleteResponse) RawJSON() string { return r.JSON.raw }
+func (r *InvoiceDeleteResponse) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
-func (r invoiceDeleteResponseJSON) RawJSON() string {
-	return r.raw
-}
-
 type InvoiceNewParams struct {
-	CreateInvoice CreateInvoiceParam `json:"create_invoice" api:"required"`
+	CreateInvoice CreateInvoiceParam
+	paramObj
 }
 
 func (r InvoiceNewParams) MarshalJSON() (data []byte, err error) {
-	return apijson.MarshalRoot(r.CreateInvoice)
+	return shimjson.Marshal(r.CreateInvoice)
+}
+func (r *InvoiceNewParams) UnmarshalJSON(data []byte) error {
+	return json.Unmarshal(data, &r.CreateInvoice)
 }
 
 type InvoiceUpdateParams struct {
-	CreateInvoice CreateInvoiceParam `json:"create_invoice" api:"required"`
+	CreateInvoice CreateInvoiceParam
+	paramObj
 }
 
 func (r InvoiceUpdateParams) MarshalJSON() (data []byte, err error) {
-	return apijson.MarshalRoot(r.CreateInvoice)
+	return shimjson.Marshal(r.CreateInvoice)
+}
+func (r *InvoiceUpdateParams) UnmarshalJSON(data []byte) error {
+	return json.Unmarshal(data, &r.CreateInvoice)
 }
 
 type InvoiceListParams struct {
 	// Number of invoices to return (default 10, max 100).
-	Limit param.Field[int64] `query:"limit"`
+	Limit param.Opt[int64] `query:"limit,omitzero" json:"-"`
 	// Number of invoices to skip (default 0).
-	Offset param.Field[int64] `query:"offset"`
+	Offset param.Opt[int64] `query:"offset,omitzero" json:"-"`
 	// Search query to filter invoices.
-	Search param.Field[string] `query:"search"`
+	Search param.Opt[string] `query:"search,omitzero" json:"-"`
+	paramObj
 }
 
 // URLQuery serializes [InvoiceListParams]'s query parameters as `url.Values`.
-func (r InvoiceListParams) URLQuery() (v url.Values) {
+func (r InvoiceListParams) URLQuery() (v url.Values, err error) {
 	return apiquery.MarshalWithSettings(r, apiquery.QuerySettings{
 		ArrayFormat:  apiquery.ArrayQueryFormatComma,
 		NestedFormat: apiquery.NestedQueryFormatBrackets,
