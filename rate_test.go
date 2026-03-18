@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stainless-sdks/vat-sense-go"
-	"github.com/stainless-sdks/vat-sense-go/internal/testutil"
-	"github.com/stainless-sdks/vat-sense-go/option"
+	"github.com/VAT-Sense/vatsense-go"
+	"github.com/VAT-Sense/vatsense-go/internal/testutil"
+	"github.com/VAT-Sense/vatsense-go/option"
 )
 
 func TestRateListWithOptionalParams(t *testing.T) {

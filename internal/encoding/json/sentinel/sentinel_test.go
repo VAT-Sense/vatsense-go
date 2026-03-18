@@ -1,8 +1,8 @@
 package sentinel_test
 
 import (
-	"github.com/stainless-sdks/vat-sense-go/internal/encoding/json/sentinel"
-	"github.com/stainless-sdks/vat-sense-go/packages/param"
+	"github.com/VAT-Sense/vatsense-go/internal/encoding/json/sentinel"
+	"github.com/VAT-Sense/vatsense-go/packages/param"
 	"reflect"
 	"slices"
 	"testing"

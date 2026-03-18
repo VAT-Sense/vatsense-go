@@ -2,7 +2,7 @@ package apiform
 
 import (
 	"bytes"
-	"github.com/stainless-sdks/vat-sense-go/packages/param"
+	"github.com/VAT-Sense/vatsense-go/packages/param"
 	"io"
 	"mime/multipart"
 	"strings"

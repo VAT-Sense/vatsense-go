@@ -19,10 +19,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/stainless-sdks/vat-sense-go/internal"
-	"github.com/stainless-sdks/vat-sense-go/internal/apierror"
-	"github.com/stainless-sdks/vat-sense-go/internal/apiform"
-	"github.com/stainless-sdks/vat-sense-go/internal/apiquery"
+	"github.com/VAT-Sense/vatsense-go/internal"
+	"github.com/VAT-Sense/vatsense-go/internal/apierror"
+	"github.com/VAT-Sense/vatsense-go/internal/apiform"
+	"github.com/VAT-Sense/vatsense-go/internal/apiquery"
 )
 
 func getDefaultHeaders() map[string]string {
