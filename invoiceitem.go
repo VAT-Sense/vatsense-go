@@ -4,7 +4,6 @@ package vatsense
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -195,7 +194,7 @@ func (r InvoiceItemUpdateParams) MarshalJSON() (data []byte, err error) {
 	return shimjson.Marshal(r.InvoiceItemInput)
 }
 func (r *InvoiceItemUpdateParams) UnmarshalJSON(data []byte) error {
-	return json.Unmarshal(data, &r.InvoiceItemInput)
+	return apijson.UnmarshalRoot(data, r)
 }
 
 type InvoiceItemDeleteParams struct {
