@@ -484,7 +484,7 @@ func (r InvoiceNewParams) MarshalJSON() (data []byte, err error) {
 	return shimjson.Marshal(r.CreateInvoice)
 }
 func (r *InvoiceNewParams) UnmarshalJSON(data []byte) error {
-	return json.Unmarshal(data, &r.CreateInvoice)
+	return apijson.UnmarshalRoot(data, r)
 }
 
 type InvoiceUpdateParams struct {
@@ -496,7 +496,7 @@ func (r InvoiceUpdateParams) MarshalJSON() (data []byte, err error) {
 	return shimjson.Marshal(r.CreateInvoice)
 }
 func (r *InvoiceUpdateParams) UnmarshalJSON(data []byte) error {
-	return json.Unmarshal(data, &r.CreateInvoice)
+	return apijson.UnmarshalRoot(data, r)
 }
 
 type InvoiceListParams struct {

@@ -11,7 +11,7 @@ The official Go library for the [VAT Sense](https://vatsense.com) REST API. Vali
 ## Installation
 
 ```sh
-go get github.com/VAT-Sense/vatsense-go
+go get -u 'github.com/VAT-Sense/vatsense-go@v0.1.0'
 ```
 
 ## Quick start

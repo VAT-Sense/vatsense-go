@@ -114,6 +114,10 @@ func (r *FindRate) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
+// A country's rate listing. For an overseas territory queried by its own ISO code
+// (e.g. "NC"), country_code and country_name identify the territory and `standard`
+// also carries a `province` key naming the parent country's province the rate is
+// stored under.
 type Rate struct {
 	// 2-character ISO 3166-1 alpha-2 country code.
 	CountryCode string `json:"country_code"`
@@ -200,7 +204,8 @@ const (
 )
 
 type TaxRate struct {
-	// The rate class (e.g. "standard", "reduced", "zero").
+	// The rate tier within its tax (e.g. "standard", "reduced", "higher", "zero",
+	// "exempt").
 	Class string `json:"class"`
 	// A description of what goods/services this rate applies to.
 	Description string `json:"description"`
@@ -208,6 +213,10 @@ type TaxRate struct {
 	Object TaxRateObject `json:"object"`
 	// The tax rate percentage.
 	Rate float64 `json:"rate"`
+	// Short name of the tax this rate belongs to (e.g. "vat", "gst", "hst", "pst",
+	// "qst", "igic", "sst"). Open vocabulary, lower case. Null where not yet
+	// classified.
+	TaxName string `json:"tax_name" api:"nullable"`
 	// Comma-separated list of product types this rate applies to, or false if it
 	// applies generally.
 	Types TaxRateTypesUnion `json:"types"`
@@ -217,6 +226,7 @@ type TaxRate struct {
 		Description respjson.Field
 		Object      respjson.Field
 		Rate        respjson.Field
+		TaxName     respjson.Field
 		Types       respjson.Field
 		ExtraFields map[string]respjson.Field
 		raw         string
@@ -359,7 +369,12 @@ func (r *RateListTypesResponse) UnmarshalJSON(data []byte) error {
 }
 
 type RateListParams struct {
-	// A 2-character ISO 3166-1 alpha-2 country code (e.g. "GB", "FR").
+	// A 2-character ISO 3166-1 alpha-2 country code (e.g. "GB", "FR"). Overseas
+	// territories that carry their own ISO code but are modelled as provinces of a
+	// parent country (e.g. "NC" New Caledonia, "MF" Saint Martin, "GP", "MQ", "RE",
+	// "PF", "GF", "YT", "BL", "PM", "WF" under "FR") may be queried directly; the
+	// response identifies the territory and the rate is the one the
+	// parent-plus-province query returns.
 	CountryCode param.Opt[string] `query:"country_code,omitzero" json:"-"`
 	// Filter results by EU membership. Use 1 for EU countries only, 0 for non-EU only.
 	Eu param.Opt[bool] `query:"eu,omitzero" json:"-"`
@@ -388,7 +403,12 @@ type RateCalculatePriceParams struct {
 	//
 	// Any of "incl", "excl".
 	TaxType RateCalculatePriceParamsTaxType `query:"tax_type,omitzero" api:"required" json:"-"`
-	// A 2-character ISO 3166-1 alpha-2 country code (e.g. "GB", "FR").
+	// A 2-character ISO 3166-1 alpha-2 country code (e.g. "GB", "FR"). Overseas
+	// territories that carry their own ISO code but are modelled as provinces of a
+	// parent country (e.g. "NC" New Caledonia, "MF" Saint Martin, "GP", "MQ", "RE",
+	// "PF", "GF", "YT", "BL", "PM", "WF" under "FR") may be queried directly; the
+	// response identifies the territory and the rate is the one the
+	// parent-plus-province query returns.
 	CountryCode param.Opt[string] `query:"country_code,omitzero" json:"-"`
 	// Filter results by EU membership. Use 1 for EU countries only, 0 for non-EU only.
 	Eu param.Opt[bool] `query:"eu,omitzero" json:"-"`
@@ -422,7 +442,12 @@ const (
 )
 
 type RateDetailsParams struct {
-	// A 2-character ISO 3166-1 alpha-2 country code (e.g. "GB", "FR").
+	// A 2-character ISO 3166-1 alpha-2 country code (e.g. "GB", "FR"). Overseas
+	// territories that carry their own ISO code but are modelled as provinces of a
+	// parent country (e.g. "NC" New Caledonia, "MF" Saint Martin, "GP", "MQ", "RE",
+	// "PF", "GF", "YT", "BL", "PM", "WF" under "FR") may be queried directly; the
+	// response identifies the territory and the rate is the one the
+	// parent-plus-province query returns.
 	CountryCode param.Opt[string] `query:"country_code,omitzero" json:"-"`
 	// Filter results by EU membership. Use 1 for EU countries only, 0 for non-EU only.
 	Eu param.Opt[bool] `query:"eu,omitzero" json:"-"`
@@ -450,7 +475,12 @@ func (r RateDetailsParams) URLQuery() (v url.Values, err error) {
 }
 
 type RateFindParams struct {
-	// A 2-character ISO 3166-1 alpha-2 country code (e.g. "GB", "FR").
+	// A 2-character ISO 3166-1 alpha-2 country code (e.g. "GB", "FR"). Overseas
+	// territories that carry their own ISO code but are modelled as provinces of a
+	// parent country (e.g. "NC" New Caledonia, "MF" Saint Martin, "GP", "MQ", "RE",
+	// "PF", "GF", "YT", "BL", "PM", "WF" under "FR") may be queried directly; the
+	// response identifies the territory and the rate is the one the
+	// parent-plus-province query returns.
 	CountryCode param.Opt[string] `query:"country_code,omitzero" json:"-"`
 	// Filter results by EU membership. Use 1 for EU countries only, 0 for non-EU only.
 	Eu param.Opt[bool] `query:"eu,omitzero" json:"-"`
