@@ -49,7 +49,14 @@ func NewInvoiceService(opts ...option.RequestOption) (r InvoiceService) {
 // totals based on the items provided.
 //
 // Not available with sandbox API keys.
+//
+// Set IdempotencyKey to retry a create safely: a repeat with the same key and the
+// same body, byte for byte, creates nothing and returns the invoice the first
+// request made.
 func (r *InvoiceService) New(ctx context.Context, body InvoiceNewParams, opts ...option.RequestOption) (res *InvoiceResponse, err error) {
+	if body.IdempotencyKey.Valid() {
+		opts = slices.Concat([]option.RequestOption{option.WithHeader("Idempotency-Key", body.IdempotencyKey.Value)}, opts)
+	}
 	opts = slices.Concat(r.options, opts)
 	path := "invoice"
 	err = requestconfig.ExecuteNewRequest(ctx, http.MethodPost, path, body, &res, opts...)
@@ -121,6 +128,10 @@ type CreateInvoiceParam struct {
 	IsReverseCharge param.Opt[bool] `json:"is_reverse_charge,omitzero"`
 	// Any additional notes for the invoice.
 	Notes param.Opt[string] `json:"notes,omitzero"`
+	// For a credit note: the ID of your own sale invoice it credits. Only a `refund`
+	// can name one; anything else gets `400` "Invalid Original Invoice ID". The credit
+	// note is then headed "Credit note". Used on create only.
+	OriginalInvoiceID param.Opt[string] `json:"original_invoice_id,omitzero"`
 	// Pad the auto-generated invoice number with leading zeros to this length.
 	PadInvoiceNumber param.Opt[int64] `json:"pad_invoice_number,omitzero"`
 	// A serial prepended to the auto-generated invoice number. Each unique serial has
@@ -175,7 +186,9 @@ type Invoice struct {
 	Date          string                 `json:"date"`
 	HasVat        bool                   `json:"has_vat"`
 	InvoiceNumber string                 `json:"invoice_number"`
-	// Unique URL to view the invoice. Append "/pdf" to download a PDF copy.
+	// Unique, unguessable URL to view the invoice. Append "/pdf" to download a PDF
+	// copy. Invoices created before the November 2026 relaunch keep their earlier
+	// style of link.
 	InvoiceURL      string        `json:"invoice_url" format:"uri"`
 	IsCopy          bool          `json:"is_copy"`
 	IsReverseCharge bool          `json:"is_reverse_charge"`
@@ -183,8 +196,10 @@ type Invoice struct {
 	Notes           string        `json:"notes" api:"nullable"`
 	NumItems        int64         `json:"num_items"`
 	// Any of "invoice".
-	Object   InvoiceObject `json:"object"`
-	TaxPoint string        `json:"tax_point"`
+	Object InvoiceObject `json:"object"`
+	// On a credit note that names the sale invoice it credits: that invoice's ID.
+	OriginalInvoiceID string `json:"original_invoice_id"`
+	TaxPoint          string `json:"tax_point"`
 	// Any of "incl", "excl".
 	TaxType InvoiceTaxType `json:"tax_type"`
 	Totals  InvoiceTotals  `json:"totals"`
@@ -194,30 +209,31 @@ type Invoice struct {
 	ZeroRated bool        `json:"zero_rated"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
-		ID              respjson.Field
-		Business        respjson.Field
-		Conversion      respjson.Field
-		Created         respjson.Field
-		CurrencyCode    respjson.Field
-		Customer        respjson.Field
-		Date            respjson.Field
-		HasVat          respjson.Field
-		InvoiceNumber   respjson.Field
-		InvoiceURL      respjson.Field
-		IsCopy          respjson.Field
-		IsReverseCharge respjson.Field
-		Items           respjson.Field
-		Notes           respjson.Field
-		NumItems        respjson.Field
-		Object          respjson.Field
-		TaxPoint        respjson.Field
-		TaxType         respjson.Field
-		Totals          respjson.Field
-		Type            respjson.Field
-		Updated         respjson.Field
-		ZeroRated       respjson.Field
-		ExtraFields     map[string]respjson.Field
-		raw             string
+		ID                respjson.Field
+		Business          respjson.Field
+		Conversion        respjson.Field
+		Created           respjson.Field
+		CurrencyCode      respjson.Field
+		Customer          respjson.Field
+		Date              respjson.Field
+		HasVat            respjson.Field
+		InvoiceNumber     respjson.Field
+		InvoiceURL        respjson.Field
+		IsCopy            respjson.Field
+		IsReverseCharge   respjson.Field
+		Items             respjson.Field
+		Notes             respjson.Field
+		NumItems          respjson.Field
+		Object            respjson.Field
+		OriginalInvoiceID respjson.Field
+		TaxPoint          respjson.Field
+		TaxType           respjson.Field
+		Totals            respjson.Field
+		Type              respjson.Field
+		Updated           respjson.Field
+		ZeroRated         respjson.Field
+		ExtraFields       map[string]respjson.Field
+		raw               string
 	} `json:"-"`
 }
 
@@ -476,7 +492,13 @@ func (r *InvoiceDeleteResponse) UnmarshalJSON(data []byte) error {
 }
 
 type InvoiceNewParams struct {
-	CreateInvoice CreateInvoiceParam
+	// Sent as the `Idempotency-Key` header to retry a create safely: a repeat with
+	// the same key and the same body, byte for byte, creates nothing and returns the
+	// invoice the first request made. The same key with a different body gets `422`
+	// "Idempotency Key Reused". 1 to 255 characters, unique to this invoice (such as
+	// your order number or a UUID).
+	IdempotencyKey param.Opt[string] `json:"-"`
+	CreateInvoice  CreateInvoiceParam
 	paramObj
 }
 
