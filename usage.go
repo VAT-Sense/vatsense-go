@@ -81,9 +81,10 @@ func (r *UsageGetResponseData) UnmarshalJSON(data []byte) error {
 type UsageGetResponseDataRequests struct {
 	// Requests remaining before the limit is reached.
 	Remaining int64 `json:"remaining"`
-	// Total requests allowed on your plan.
+	// Requests available in the current billing period (plan, request packs and,
+	// while overage is on, the overage allowed).
 	Total int64 `json:"total"`
-	// Requests used in the last 30 days.
+	// Requests used so far in the current billing period.
 	Used int64 `json:"used"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {

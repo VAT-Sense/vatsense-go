@@ -384,6 +384,11 @@ type RateListParams struct {
 	// A historical date to retrieve rates for (format "YYYY-MM-DD HH:MM:SS"). Must be
 	// a past date.
 	Period param.Opt[time.Time] `query:"period,omitzero" format:"date-time" json:"-"`
+	// Whether to list province and territory rates (rate objects that carry a
+	// `province` property) in each country's `other` list. Pass false to leave them
+	// out, so only country-wide rates are listed; true, or omitting the parameter,
+	// lists them as before. The `standard` rate is always the country-wide one.
+	Provinces param.Opt[bool] `query:"provinces,omitzero" json:"-"`
 	paramObj
 }
 

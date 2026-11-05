@@ -47,7 +47,12 @@ func NewValidateService(opts ...option.RequestOption) (r ValidateService) {
 // **EORI validation** checks against UK and EU records only.
 //
 // If the external validation service is temporarily unavailable, the API returns a
-// `412` error and the request does not count against your usage quota.
+// `412` error and the request does not count against your usage quota. It also
+// returns the `412`, uncounted, when a check takes longer than 55 seconds for a
+// number checked with VIES or the EU EORI service, or 25 seconds for any other.
+// With a webhook endpoint taking `validation.completed`, a number that got the
+// `412` keeps being checked and the answer is sent by webhook
+// (https://vatsense.com/documentation#webhooks).
 //
 // Provide either `vat_number` or `eori_number`, but not both.
 func (r *ValidateService) Check(ctx context.Context, query ValidateCheckParams, opts ...option.RequestOption) (res *ValidateCheckResponse, err error) {
@@ -82,12 +87,15 @@ type ValidateCheckResponseData struct {
 	// Official consultation number (only returned when requester_vat_number is
 	// provided).
 	ConsultationNumber string `json:"consultation_number" api:"nullable"`
+	// Only when a `match_` parameter was sent.
+	Match ValidateCheckResponseDataMatch `json:"match"`
 	// Whether the VAT/EORI number is valid.
 	Valid bool `json:"valid"`
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Company            respjson.Field
 		ConsultationNumber respjson.Field
+		Match              respjson.Field
 		Valid              respjson.Field
 		ExtraFields        map[string]respjson.Field
 		raw                string
@@ -97,6 +105,62 @@ type ValidateCheckResponseData struct {
 // Returns the unmodified JSON received from the API
 func (r ValidateCheckResponseData) RawJSON() string { return r.JSON.raw }
 func (r *ValidateCheckResponseData) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// Only when a `match_` parameter was sent.
+type ValidateCheckResponseDataMatch struct {
+	// One entry for each detail sent (company_name, address, street, postcode,
+	// city).
+	Fields map[string]ValidateCheckResponseDataMatchField `json:"fields"`
+	// likely (a score of 80 or more, and the name, if sent, is not a no_match),
+	// possible (50 to 79), unlikely (under 50), or not_applicable when nothing could
+	// be compared.
+	//
+	// Any of "likely", "possible", "unlikely", "not_applicable".
+	Result string `json:"result"`
+	// The average of the details sent, with the name counting twice. null when
+	// not_applicable.
+	Score int64 `json:"score" api:"nullable"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Fields      respjson.Field
+		Result      respjson.Field
+		Score       respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r ValidateCheckResponseDataMatch) RawJSON() string { return r.JSON.raw }
+func (r *ValidateCheckResponseDataMatch) UnmarshalJSON(data []byte) error {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+// How one detail you sent compared with the registered details.
+type ValidateCheckResponseDataMatchField struct {
+	// Any of "match", "partial", "no_match", "not_applicable".
+	Result string `json:"result"`
+	Score  int64  `json:"score" api:"nullable"`
+	// VIES's own answer for that detail on a live EU check; empty when VIES said
+	// nothing.
+	//
+	// Any of "valid", "invalid", "not_processed".
+	Vies string `json:"vies" api:"nullable"`
+	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
+	JSON struct {
+		Result      respjson.Field
+		Score       respjson.Field
+		Vies        respjson.Field
+		ExtraFields map[string]respjson.Field
+		raw         string
+	} `json:"-"`
+}
+
+// Returns the unmodified JSON received from the API
+func (r ValidateCheckResponseDataMatchField) RawJSON() string { return r.JSON.raw }
+func (r *ValidateCheckResponseDataMatchField) UnmarshalJSON(data []byte) error {
 	return apijson.UnmarshalRoot(data, r)
 }
 
@@ -191,6 +255,21 @@ type ValidateCheckParams struct {
 	// The EORI number to validate. Must include the leading 2-character country code
 	// (e.g. "GB123456789123"). UK and EU only.
 	EoriNumber param.Opt[string] `query:"eori_number,omitzero" json:"-"`
+	// The whole address you hold, as one line, matched against the registered
+	// address.
+	MatchAddress param.Opt[string] `query:"match_address,omitzero" json:"-"`
+	// The town or city you hold, looked for in the registered address.
+	MatchCity param.Opt[string] `query:"match_city,omitzero" json:"-"`
+	// The company name you hold, matched against the registered name. Legal forms
+	// such as Ltd or GmbH, accents, punctuation and word order are ignored. Sending
+	// any `match_` parameter adds `match` to the response; matching costs nothing
+	// extra.
+	MatchCompanyName param.Opt[string] `query:"match_company_name,omitzero" json:"-"`
+	// The postcode you hold, looked for in the registered address. Spaces are
+	// ignored.
+	MatchPostcode param.Opt[string] `query:"match_postcode,omitzero" json:"-"`
+	// The street line you hold, looked for in the registered address.
+	MatchStreet param.Opt[string] `query:"match_street,omitzero" json:"-"`
 	// Your own VAT number. If supplied, the response will include a unique
 	// consultation number issued by the relevant authority (VIES or HMRC). Must
 	// include the leading 2-character country code.
