@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/VAT-Sense/vatsense-go/compare/v0.2.0...v0.3.0) (2026-11-05)
+
+
+### Features
+
+* **api:** company matching, provinces filter, Idempotency-Key and credit notes ([#4](https://github.com/VAT-Sense/vatsense-go/issues/4)) ([d83288d](https://github.com/VAT-Sense/vatsense-go/commit/d83288d6e66d0c31c69d04993861a5ac3fd347c4))
+
 ## 0.2.0 (2026-09-04)
 
 Full Changelog: [v0.1.0...v0.2.0](https://github.com/VAT-Sense/vatsense-go/compare/v0.1.0...v0.2.0)
