@@ -73,6 +73,78 @@ fmt.Println(response.Data.ConsultationNumber)
 
 > **Note:** GB requester numbers only work for GB validations, and EU requester numbers only work for EU validations. Cross-region requests are not supported.
 
+If you would rather have an answer than wait for a consultation number when VIES is down, set `ConsultationOptional: vatsense.Bool(true)`. Where a national register can confirm the number, you get the answer with no consultation number instead of the `412`.
+
+### Check many numbers at once (batches)
+
+A batch checks a list of VAT numbers, as the dashboard's bulk validator does with a file. Batch calls are free and each number checked counts as one request. With a test key the batch is answered from the test numbers and costs nothing.
+
+```go
+created, err := client.Batches.New(ctx, vatsense.BatchNewParams{
+	Numbers:        []string{"GB288305674", "FR12345678901"},
+	Reference:      vatsense.String("November customers"),
+	IdempotencyKey: vatsense.String("november-customers"),
+})
+if err != nil {
+	return err
+}
+id := created.Data.ID
+
+// Poll, or take the batch.completed webhook instead.
+for {
+	batch, err := client.Batches.Get(ctx, id)
+	if err != nil {
+		return err
+	}
+	if s := batch.Data.Status; s == "complete" || s == "paused" || s == "expired" {
+		break
+	}
+	time.Sleep(10 * time.Second)
+}
+
+params := vatsense.BatchResultsParams{Limit: vatsense.Int(1000)}
+for {
+	page, err := client.Batches.Results(ctx, id, params)
+	if err != nil {
+		return err
+	}
+	for _, row := range page.Data.Data {
+		fmt.Println(row.VatNumber, row.Result, row.CompanyName)
+	}
+	if !page.Data.HasMore {
+		break
+	}
+	params.After = vatsense.Int(page.Data.NextAfter)
+}
+
+csv, err := client.Batches.ResultsCsv(ctx, id)
+```
+
+Set `Rows: []vatsense.BatchRowParam{{VatNumber: ..., CompanyName: vatsense.String(...)}}` instead of `Numbers` for company matching. A batch can also be paused, continued, completed and, while a draft, deleted.
+
+### Check a webhook's signature
+
+Every webhook event carries a `VatSense-Signature` header. Check it against the raw request body with the endpoint's signing secret before trusting the event:
+
+```go
+http.HandleFunc("/webhooks/vatsense", func(w http.ResponseWriter, r *http.Request) {
+	payload, _ := io.ReadAll(r.Body)
+	event, err := vatsense.ConstructWebhookEvent(payload, r.Header.Get(vatsense.WebhookSignatureHeader), os.Getenv("VATSENSE_WEBHOOK_SECRET"))
+	if err != nil {
+		http.Error(w, "bad signature", http.StatusBadRequest)
+		return
+	}
+	if event.Type == "batch.completed" {
+		var batch vatsense.Batch
+		_ = json.Unmarshal(event.Data.Object, &batch)
+		// ...
+	}
+	w.WriteHeader(http.StatusOK)
+})
+```
+
+Events more than 5 minutes old are refused (change it with `vatsense.WebhookOptions{Tolerance: ...}`). During the 24 hours after a secret is rolled, events signed with either secret are accepted.
+
 ### Find the VAT rate for a country
 
 ```go
@@ -187,6 +259,7 @@ response, err := client.Validate.Check(
 | `client.Rates`       | VAT/GST rate lookups, price calculations         |
 | `client.Countries`   | Country data and province lookups                |
 | `client.Currency`    | Exchange rates and currency conversion           |
+| `client.Batches`     | Check many VAT numbers in one batch              |
 | `client.Invoice`     | Create and manage VAT-compliant invoices         |
 | `client.Usage`       | Check your API usage                             |
 
