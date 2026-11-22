@@ -118,3 +118,32 @@ Response Types:
 Methods:
 
 - <code title="post /sandbox/key">client.Sandbox.<a href="https://pkg.go.dev/github.com/VAT-Sense/vatsense-go#SandboxService.GenerateKey">GenerateKey</a>(ctx <a href="https://pkg.go.dev/context">context</a>.<a href="https://pkg.go.dev/context#Context">Context</a>) (\*<a href="https://pkg.go.dev/github.com/VAT-Sense/vatsense-go">vatsense</a>.<a href="https://pkg.go.dev/github.com/VAT-Sense/vatsense-go#SandboxGenerateKeyResponse">SandboxGenerateKeyResponse</a>, <a href="https://pkg.go.dev/builtin#error">error</a>)</code>
+
+# Batches
+
+Response types:
+
+- <a href="https://pkg.go.dev/github.com/VAT-Sense/vatsense-go">vatsense</a>.<a href="https://pkg.go.dev/github.com/VAT-Sense/vatsense-go#Batch">Batch</a>
+- <a href="https://pkg.go.dev/github.com/VAT-Sense/vatsense-go">vatsense</a>.<a href="https://pkg.go.dev/github.com/VAT-Sense/vatsense-go#BatchResult">BatchResult</a>
+- <a href="https://pkg.go.dev/github.com/VAT-Sense/vatsense-go">vatsense</a>.<a href="https://pkg.go.dev/github.com/VAT-Sense/vatsense-go#BatchResponse">BatchResponse</a>
+- <a href="https://pkg.go.dev/github.com/VAT-Sense/vatsense-go">vatsense</a>.<a href="https://pkg.go.dev/github.com/VAT-Sense/vatsense-go#BatchListResponse">BatchListResponse</a>
+- <a href="https://pkg.go.dev/github.com/VAT-Sense/vatsense-go">vatsense</a>.<a href="https://pkg.go.dev/github.com/VAT-Sense/vatsense-go#BatchResultsResponse">BatchResultsResponse</a>
+- <a href="https://pkg.go.dev/github.com/VAT-Sense/vatsense-go">vatsense</a>.<a href="https://pkg.go.dev/github.com/VAT-Sense/vatsense-go#BatchDeleteResponse">BatchDeleteResponse</a>
+
+Methods:
+
+- <code title="post /batches">client.Batches.New(ctx, body vatsense.BatchNewParams) (\*vatsense.BatchResponse, error)</code>
+- <code title="get /batches">client.Batches.List(ctx, query vatsense.BatchListParams) (\*vatsense.BatchListResponse, error)</code>
+- <code title="get /batches/{batch_id}">client.Batches.Get(ctx, batchID string) (\*vatsense.BatchResponse, error)</code>
+- <code title="delete /batches/{batch_id}">client.Batches.Delete(ctx, batchID string) (\*vatsense.BatchDeleteResponse, error)</code>
+- <code title="post /batches/{batch_id}/start">client.Batches.Start(ctx, batchID string, body vatsense.BatchStartParams) (\*vatsense.BatchResponse, error)</code>
+- <code title="post /batches/{batch_id}/pause">client.Batches.Pause(ctx, batchID string) (\*vatsense.BatchResponse, error)</code>
+- <code title="post /batches/{batch_id}/continue">client.Batches.Continue(ctx, batchID string, body vatsense.BatchContinueParams) (\*vatsense.BatchResponse, error)</code>
+- <code title="post /batches/{batch_id}/complete">client.Batches.Complete(ctx, batchID string) (\*vatsense.BatchResponse, error)</code>
+- <code title="get /batches/{batch_id}/results">client.Batches.Results(ctx, batchID string, query vatsense.BatchResultsParams) (\*vatsense.BatchResultsResponse, error)</code>
+- <code title="get /batches/{batch_id}/results.csv">client.Batches.ResultsCsv(ctx, batchID string) ([]byte, error)</code>
+
+# Webhooks
+
+- <code>vatsense.VerifyWebhookSignature(payload []byte, header string, secret string, opts ...vatsense.WebhookOptions) error</code>
+- <code>vatsense.ConstructWebhookEvent(payload []byte, header string, secret string, opts ...vatsense.WebhookOptions) (\*vatsense.WebhookEvent, error)</code>

@@ -84,6 +84,9 @@ func (r *ValidateCheckResponse) UnmarshalJSON(data []byte) error {
 
 type ValidateCheckResponseData struct {
 	Company ValidateCheckResponseDataCompanyUnion `json:"company"`
+	// VAT Sense's own reference for this check (beta, only for accounts in the
+	// beta). It is not an official number.
+	ConfirmationNumber string `json:"confirmation_number" api:"nullable"`
 	// Official consultation number (only returned when requester_vat_number is
 	// provided).
 	ConsultationNumber string `json:"consultation_number" api:"nullable"`
@@ -94,6 +97,7 @@ type ValidateCheckResponseData struct {
 	// JSON contains metadata for fields, check presence with [respjson.Field.Valid].
 	JSON struct {
 		Company            respjson.Field
+		ConfirmationNumber respjson.Field
 		ConsultationNumber respjson.Field
 		Match              respjson.Field
 		Valid              respjson.Field
@@ -252,6 +256,14 @@ func (r *ValidateCheckResponseDataCompanyEoriValidationCompany) UnmarshalJSON(da
 }
 
 type ValidateCheckParams struct {
+	// Set to true with RequesterVatNumber if you would rather have an answer than
+	// wait for a consultation number. When VIES cannot answer for the number's
+	// country and that country has a national register fallback, the answer comes
+	// from the register with no consultation number, instead of the `412`. If VIES
+	// cannot check your own RequesterVatNumber, the number is checked without it,
+	// again with no consultation number. Leave it out if you need the consultation
+	// number as proof of the check.
+	ConsultationOptional param.Opt[bool] `query:"consultation_optional,omitzero" json:"-"`
 	// The EORI number to validate. Must include the leading 2-character country code
 	// (e.g. "GB123456789123"). UK and EU only.
 	EoriNumber param.Opt[string] `query:"eori_number,omitzero" json:"-"`

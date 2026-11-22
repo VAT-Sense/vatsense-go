@@ -32,6 +32,8 @@ type Client struct {
 	Usage UsageService
 	// Temporary sandbox API keys for testing
 	Sandbox SandboxService
+	// Bulk validation: check many VAT numbers in one batch
+	Batches BatchService
 }
 
 // DefaultClientOptions read from the environment (VAT_SENSE_USERNAME,
@@ -75,6 +77,7 @@ func NewClient(opts ...option.RequestOption) (r Client) {
 	r.Invoice = NewInvoiceService(opts...)
 	r.Usage = NewUsageService(opts...)
 	r.Sandbox = NewSandboxService(opts...)
+	r.Batches = NewBatchService(opts...)
 
 	return
 }
